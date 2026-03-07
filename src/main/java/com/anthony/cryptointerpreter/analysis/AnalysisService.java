@@ -18,7 +18,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AnalysisService {
 
-    private static final String SYMBOL         = "BTCUSDT";
     private static final String KLINE_INTERVAL = "1h";
     private static final int    KLINE_LIMIT    = 15;
 
@@ -32,9 +31,9 @@ public class AnalysisService {
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    public List<ChartAnnotationDTO> getChartAnnotations() {
-        Ticker24hDTO ticker = binanceClient.fetchTicker24h(SYMBOL);
-        List<CryptoPrice> recentPrices = cryptoPriceRepository.findTop10BySymbolOrderByTimestampDesc(SYMBOL);
+    public List<ChartAnnotationDTO> getChartAnnotations(String symbol) {
+        Ticker24hDTO ticker = binanceClient.fetchTicker24h(symbol);
+        List<CryptoPrice> recentPrices = cryptoPriceRepository.findTop10BySymbolOrderByTimestampDesc(symbol);
 
         BigDecimal high24h      = new BigDecimal(ticker.highPrice());
         BigDecimal low24h       = new BigDecimal(ticker.lowPrice());
@@ -74,9 +73,9 @@ public class AnalysisService {
         return annotations;
     }
 
-    public DiagnosticReportDTO getDiagnosticReport() {
-        Ticker24hDTO ticker = binanceClient.fetchTicker24h(SYMBOL);
-        List<List<Object>> klines = binanceClient.fetchKlines(SYMBOL, KLINE_INTERVAL, KLINE_LIMIT);
+    public DiagnosticReportDTO getDiagnosticReport(String symbol) {
+        Ticker24hDTO ticker = binanceClient.fetchTicker24h(symbol);
+        List<List<Object>> klines = binanceClient.fetchKlines(symbol, KLINE_INTERVAL, KLINE_LIMIT);
 
         BigDecimal high24h      = new BigDecimal(ticker.highPrice());
         BigDecimal low24h       = new BigDecimal(ticker.lowPrice());
@@ -109,6 +108,46 @@ public class AnalysisService {
 
         String actionPlan = buildActionPlan(
                 oppScore, volatility, rrRatio, rsi, volumeProfile, low24h, high24h);
+
+        return new DiagnosticReportDTO(currentPrice, rsi, volumeProfile, volatility,
+                rrRatio, oppScore, signals, summary, actionPlan);
+    }
+
+    /**
+     * Calculates a full DiagnosticReportDTO from pre-fetched data.
+     * Used for non-Binance assets (e.g. B3 stocks via HG Brasil) where the
+     * ticker and price history are sourced externally rather than from klines.
+     *
+     * @param ticker     24-h market snapshot (high, low, last, volume)
+     * @param closes     daily close prices sorted oldest → newest (used for RSI)
+     * @param volumes    daily volumes sorted oldest → newest (used for volume profile)
+     */
+    public DiagnosticReportDTO getDiagnosticReport(Ticker24hDTO ticker,
+                                                   List<BigDecimal> closes,
+                                                   List<BigDecimal> volumes) {
+        BigDecimal high24h      = new BigDecimal(ticker.highPrice());
+        BigDecimal low24h       = new BigDecimal(ticker.lowPrice());
+        BigDecimal currentPrice = new BigDecimal(ticker.lastPrice());
+
+        BigDecimal rsi           = calculateRSI(closes);
+        String     volumeProfile = classifyVolume(volumes);
+        String     volatility    = "NORMAL";   // no intraday klines for stocks
+        double     rrRatio       = calculateRiskReward(currentPrice, low24h, high24h);
+        double     oppScore      = calculateOpportunityScore(rsi, volumeProfile, rrRatio);
+
+        boolean atResistance    = isNearLevel(currentPrice, high24h);
+        boolean brokeResistance = currentPrice.compareTo(high24h) > 0;
+        boolean volumeHigh      = "HIGH".equals(volumeProfile);
+        boolean volumeLow       = "LOW".equals(volumeProfile);
+        boolean rsiOverbought   = rsi.compareTo(RSI_OVERBOUGHT) > 0;
+
+        List<String> signals = new ArrayList<>();
+        if (atResistance && volumeLow)     signals.add("Fakeout Warning: Low buying pressure at resistance");
+        if (brokeResistance && volumeHigh) signals.add("Breakout Confirmed: High institutional interest");
+        if (rsiOverbought && atResistance) signals.add("Exhaustion Alert: Market overbought, expect correction");
+
+        String summary    = buildSummary(oppScore, volatility, signals, rsi, volumeProfile, rrRatio);
+        String actionPlan = buildActionPlan(oppScore, volatility, rrRatio, rsi, volumeProfile, low24h, high24h);
 
         return new DiagnosticReportDTO(currentPrice, rsi, volumeProfile, volatility,
                 rrRatio, oppScore, signals, summary, actionPlan);
