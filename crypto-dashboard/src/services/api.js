@@ -14,8 +14,13 @@ const binance = axios.create({
 // ── Market scanner ────────────────────────────────────────────────────────────
 
 /** Returns the last saved ranked list without triggering a new scan. */
+//export const getOpportunities = () =>
+  //api.get('/analysis/top-opportunities').then((res) => res.data);
+
+// teste api rest
+// Adicione ou altere para este caminho:
 export const getOpportunities = () =>
-  api.get('/analysis/top-opportunities').then((res) => res.data);
+    api.get('/market/opportunities').then((res) => res.data);
 
 /** Triggers a full market scan, persists results, returns ranked list. */
 export const runScan = () =>
