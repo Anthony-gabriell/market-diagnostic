@@ -3,7 +3,8 @@ import axios from 'axios';
 // ── Axios instances ───────────────────────────────────────────────────────────
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+    // Trocamos o localhost pela URL do seu servidor no Render
+    baseURL: 'https://crypto-interpreter-backend.onrender.com/api',
 });
 
 const binance = axios.create({
