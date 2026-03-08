@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import logoAtech from './assets/logo2.png';
 import {
   RefreshCw, TrendingUp, TrendingDown, Clock, Activity,
   X, Bitcoin, BarChart2, CheckCircle, AlertTriangle,
@@ -356,198 +357,235 @@ function AnalysisModal({ symbol, diagnostic, klines, annotations, loadingDiag, l
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [coins, setCoins]               = useState([]);
-  const [filter, setFilter]             = useState('all');
-  const [selectedSymbol, setSelected]   = useState(null);
-  const [diagnostic, setDiagnostic]     = useState(null);
-  const [klines, setKlines]             = useState([]);
-  const [annotations, setAnnotations]   = useState([]);
-  const [scanning, setScanning]         = useState(false);
-  const [loadingDiag, setLoadingDiag]   = useState(false);
-  const [loadingChart, setLoadingChart] = useState(false);
+    const [coins, setCoins]               = useState([]);
+    const [filter, setFilter]             = useState('all');
+    const [selectedSymbol, setSelected]   = useState(null);
+    const [diagnostic, setDiagnostic]     = useState(null);
+    const [klines, setKlines]             = useState([]);
+    const [annotations, setAnnotations]   = useState([]);
+    const [scanning, setScanning]         = useState(false);
+    const [loadingDiag, setLoadingDiag]   = useState(false);
+    const [loadingChart, setLoadingChart] = useState(false);
 
-  const loadOpportunities = useCallback(async () => {
-    try {
-      const data = await getOpportunities();
-      setCoins(data);
-    } catch (err) {
-      console.error('Falha ao carregar oportunidades:', err);
-    }
-  }, []);
+    const loadOpportunities = useCallback(async () => {
+        try {
+            const data = await getOpportunities();
+            setCoins(data);
+        } catch (err) {
+            console.error('Falha ao carregar oportunidades:', err);
+        }
+    }, []);
 
-  const handleScan = async () => {
-    setScanning(true);
-    try {
-      const data = await runScan();
-      setCoins(data);
-    } catch (err) {
-      console.error('Scan falhou:', err);
-    } finally {
-      setScanning(false);
-    }
-  };
+    const handleScan = async () => {
+        setScanning(true);
+        try {
+            const data = await runScan();
+            setCoins(data);
+        } catch (err) {
+            console.error('Scan falhou:', err);
+        } finally {
+            setScanning(false);
+        }
+    };
 
-  const selectSymbol = async (symbol) => {
-    if (symbol === selectedSymbol) { setSelected(null); return; }
+    const selectSymbol = async (symbol) => {
+        if (symbol === selectedSymbol) { setSelected(null); return; }
 
-    setSelected(symbol);
-    setDiagnostic(null);
-    setKlines([]);
-    setAnnotations([]);
-    setLoadingDiag(true);
-    setLoadingChart(true);
+        setSelected(symbol);
+        setDiagnostic(null);
+        setKlines([]);
+        setAnnotations([]);
+        setLoadingDiag(true);
+        setLoadingChart(true);
 
-    const crypto = isCrypto(symbol);
-    const [diagResult, klinesResult, annotationsResult] = await Promise.allSettled([
-      getDiagnostic(symbol),
-      crypto ? getKlines(symbol) : Promise.resolve([]),
-      crypto ? getAnnotations(symbol) : Promise.resolve([]),
-    ]);
+        const crypto = isCrypto(symbol);
+        const [diagResult, klinesResult, annotationsResult] = await Promise.allSettled([
+            getDiagnostic(symbol),
+            crypto ? getKlines(symbol) : Promise.resolve([]),
+            crypto ? getAnnotations(symbol) : Promise.resolve([]),
+        ]);
 
-    if (diagResult.status === 'fulfilled')       setDiagnostic(diagResult.value);
-    setLoadingDiag(false);
-    if (klinesResult.status === 'fulfilled')     setKlines(klinesResult.value);
-    if (annotationsResult.status === 'fulfilled') setAnnotations(annotationsResult.value);
-    setLoadingChart(false);
-  };
+        if (diagResult.status === 'fulfilled')       setDiagnostic(diagResult.value);
+        setLoadingDiag(false);
+        if (klinesResult.status === 'fulfilled')     setKlines(klinesResult.value);
+        if (annotationsResult.status === 'fulfilled') setAnnotations(annotationsResult.value);
+        setLoadingChart(false);
+    };
 
-  useEffect(() => { loadOpportunities(); }, [loadOpportunities]);
+    useEffect(() => { loadOpportunities(); }, [loadOpportunities]);
 
-  const cryptoCoins    = coins.filter(c => isCrypto(c.symbol));
-  const b3Coins        = coins.filter(c => !isCrypto(c.symbol));
-  const filteredCoins  = filter === 'crypto' ? cryptoCoins : filter === 'b3' ? b3Coins : coins;
-  const top3           = coins.slice(0, 3);
-  const lastUpdated    = coins[0]?.scannedAt ?? null;
+    const cryptoCoins    = coins.filter(c => isCrypto(c.symbol));
+    const b3Coins        = coins.filter(c => !isCrypto(c.symbol));
+    const filteredCoins  = filter === 'crypto' ? cryptoCoins : filter === 'b3' ? b3Coins : coins;
+    const top3           = coins.slice(0, 3);
+    const lastUpdated    = coins[0]?.scannedAt ?? null;
 
-  return (
-    <div className="min-h-screen font-sans antialiased text-slate-100" style={{ background: '#121212' }}>
+    return (
+        <div className="min-h-screen font-sans antialiased text-slate-100" style={{ background: '#121212' }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-40 border-b px-5 py-3"
-        style={{ background: 'rgba(18,18,18,0.92)', borderColor: 'rgba(74,120,86,0.15)', backdropFilter: 'blur(16px)' }}
-      >
-        <div className="mx-auto flex max-w-7xl items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-7 w-7 items-center justify-center rounded-lg"
-              style={{ background: 'rgba(74,120,86,0.2)' }}
-            >
-              <TrendingUp className="h-4 w-4 text-green-400" />
-            </div>
-            <span className="font-bold tracking-tight text-white">ATECH</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-sm text-slate-400">Crypto Interpreter</span>
-          </div>
+            <section className="relative w-full h-[55vh] flex flex-col overflow-hidden bg-black">
+                {/* AJUSTE: Aumentamos a opacidade do vídeo para 0.6 para aparecer mais a rede neural */}
+                <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-60 z-0">
+                    <source src={require('./assets/neural_trade_mind.mp4')} type="video/mp4" />
+                </video>
 
-          <div className="ml-auto flex items-center gap-3">
-            {lastUpdated && (
-              <div className="hidden items-center gap-1.5 sm:flex">
-                <Clock className="h-3 w-3 text-slate-600" />
-                <span className="text-[11px] text-slate-500">
-                  Última atualização: {formatDateTime(lastUpdated)}
+                {/* Gradiente mais suave para não escurecer tanto o centro */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-[#121212] z-[1]" />
+
+                <header className="relative z-10 w-full px-8 py-5 flex items-center justify-between">
+                    <div className="flex items-center w-1/5">
+                        {/* Cápsula com mais brilho e logo ajustada */}
+                        <div className="flex items-center gap-2 rounded-full px-3.5 py-1.5 bg-white/[0.07] border border-white/[0.12] backdrop-blur-md shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                            <img
+                                src={logoAtech}
+                                alt="Logo"
+                                className="h-3 w-auto brightness-[2.5] contrast-125"
+                            />
+                            <span className="text-[10px] font-medium tracking-[0.4em] text-white uppercase leading-none italic opacity-90">
+                    Atech
                 </span>
-              </div>
-            )}
+                        </div>
+                    </div>
 
-            <button
-              onClick={handleScan}
-              disabled={scanning}
-              className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all disabled:opacity-60"
-              style={{ background: scanning ? '#3A6244' : '#4A7856' }}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${scanning ? 'animate-spin' : ''}`} />
-              {scanning ? 'Analisando…' : 'Novo Scan'}
-            </button>
-          </div>
-        </div>
-      </header>
+                    {/* Menu de Navegação - Mantido, mas com py-4 para ser mais estreito */}
+                    <nav className="flex items-center gap-8">
+                        <div className="hidden md:flex gap-6">
+                            {['Home', 'Recursos', 'Sobre', 'Contato'].map((item) => (
+                                <a key={item} href="#" className="text-[10px] font-extrabold tracking-widest text-slate-400 hover:text-green-400 transition-all uppercase">
+                                    {item}
+                                </a>
+                            ))}
+                        </div>
 
-      <main className="mx-auto max-w-7xl space-y-8 px-5 py-6">
+                        <div className="flex items-center gap-4 pl-6 border-l border-white/10">
+                            {lastUpdated && (
+                                <div className="hidden flex-col items-end sm:flex opacity-60">
+                                    <span className="text-[9px] uppercase tracking-tighter text-slate-400">Online</span>
+                                    <span className="text-[10px] text-slate-300 tabular-nums">
+                              {formatDateTime(lastUpdated)}
+                            </span>
+                                </div>
+                            )}
+                            <button
+                                onClick={handleScan}
+                                disabled={scanning}
+                                className="flex h-9 w-9 items-center justify-center rounded-full bg-green-500/10 border border-green-500/20 text-green-400 transition-all hover:bg-green-500/30"
+                            >
+                                <RefreshCw className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
+                            </button>
+                        </div>
+                    </nav>
+                </header>
 
-        {/* ── Top 3 Oportunidades ──────────────────────────────────────────── */}
-        {top3.length > 0 && (
-          <section>
-            <div className="mb-3 flex items-center gap-2">
-              <Activity className="h-4 w-4 text-green-400" />
-              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                Top 3 Oportunidades
-              </h2>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {top3.map(coin => (
-                <OpportunityCard
-                  key={coin.symbol}
-                  coin={coin}
-                  featured
-                  onClick={() => selectSymbol(coin.symbol)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+                {/* CONTEÚDO CENTRAL: Subimos mais com -mt-16 para descolar da base */}
+                <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-5 -mt-16">
+                    <div className="flex flex-col items-center">
+                        <h1 className="text-5xl md:text-6xl font-black tracking-[0.2em] text-white uppercase italic leading-none drop-shadow-2xl">
+                            TRADE MIND
+                        </h1>
+                        <span className="mt-3 text-[10px] font-bold tracking-[0.6em] text-green-400/80 uppercase">
+                Inteligência de Mercado
+            </span>
 
-        {/* ── Todos os ativos ──────────────────────────────────────────────── */}
-        <section>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <FilterToggle
-              filter={filter}
-              onChange={setFilter}
-              counts={{ all: coins.length, crypto: cryptoCoins.length, b3: b3Coins.length }}
-            />
-            {coins.length > 0 && (
-              <span className="text-[11px] text-slate-600">
+                        {/* Botões com mais margem topo para não colar embaixo */}
+                        <div className="mt-14 flex gap-6">
+                            <button className="px-10 py-3.5 bg-green-600 hover:bg-green-500 text-white text-[10px] font-black tracking-[0.2em] uppercase rounded-sm transition-all shadow-2xl shadow-green-900/40">
+                                Começar Scan
+                            </button>
+                            <button className="px-10 py-3.5 bg-white/[0.03] border border-white/10 hover:border-white/30 text-white text-[10px] font-black tracking-[0.2em] uppercase rounded-sm transition-all backdrop-blur-lg">
+                                Análise Pro
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <main className="mx-auto max-w-7xl space-y-8 px-5 py-8">
+
+
+                {/* ── Top 3 Oportunidades ──────────────────────────────────────────── */}
+                {top3.length > 0 && (
+                    <section>
+                        <div className="mb-3 flex items-center gap-2">
+                            <Activity className="h-4 w-4 text-green-400" />
+                            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                                Top 3 Oportunidades
+                            </h2>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-3">
+                            {top3.map(coin => (
+                                <OpportunityCard
+                                    key={coin.symbol}
+                                    coin={coin}
+                                    featured
+                                    onClick={() => selectSymbol(coin.symbol)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* ── Todos os ativos ──────────────────────────────────────────────── */}
+                <section>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <FilterToggle
+                            filter={filter}
+                            onChange={setFilter}
+                            counts={{ all: coins.length, crypto: cryptoCoins.length, b3: b3Coins.length }}
+                        />
+                        {coins.length > 0 && (
+                            <span className="text-[11px] text-slate-600">
                 {filteredCoins.length} ativo{filteredCoins.length !== 1 ? 's' : ''}
               </span>
-            )}
-          </div>
+                        )}
+                    </div>
 
-          {filteredCoins.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <Activity className="mb-3 h-8 w-8 text-slate-700" />
-              <p className="text-sm text-slate-600">Nenhum dado — execute um novo scan.</p>
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredCoins.map(coin => (
-                <OpportunityCard
-                  key={coin.symbol}
-                  coin={coin}
-                  onClick={() => selectSymbol(coin.symbol)}
+                    {filteredCoins.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-24 text-center">
+                            <Activity className="mb-3 h-8 w-8 text-slate-700" />
+                            <p className="text-sm text-slate-600">Nenhum dado — execute um novo scan.</p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {filteredCoins.map(coin => (
+                                <OpportunityCard
+                                    key={coin.symbol}
+                                    coin={coin}
+                                    onClick={() => selectSymbol(coin.symbol)}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                {/* Score legend */}
+                {coins.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-4 pt-2 text-[10px]">
+                        <span className="text-slate-700">Legenda:</span>
+                        {[
+                            { color: '#4A7856', label: '≥8 Forte Compra' },
+                            { color: '#EAB308', label: '≥6 Observar' },
+                            { color: '#F97316', label: '≥4 Fraco' },
+                            { color: '#EF4444', label: '<4 Evitar' },
+                        ].map(item => (
+                            <span key={item.label} style={{ color: item.color }}>{item.label}</span>
+                        ))}
+                    </div>
+                )}
+            </main>
+
+            {/* ── Modal de análise ─────────────────────────────────────────────────── */}
+            {selectedSymbol && (
+                <AnalysisModal
+                    symbol={selectedSymbol}
+                    diagnostic={diagnostic}
+                    klines={klines}
+                    annotations={annotations}
+                    loadingDiag={loadingDiag}
+                    loadingChart={loadingChart}
+                    onClose={() => setSelected(null)}
                 />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Score legend */}
-        {coins.length > 0 && (
-          <div className="flex flex-wrap items-center gap-4 pt-2 text-[10px]">
-            <span className="text-slate-700">Legenda:</span>
-            {[
-              { color: '#4A7856', label: '≥8 Forte Compra' },
-              { color: '#EAB308', label: '≥6 Observar' },
-              { color: '#F97316', label: '≥4 Fraco' },
-              { color: '#EF4444', label: '<4 Evitar' },
-            ].map(item => (
-              <span key={item.label} style={{ color: item.color }}>{item.label}</span>
-            ))}
-          </div>
-        )}
-      </main>
-
-      {/* ── Modal de análise ─────────────────────────────────────────────────── */}
-      {selectedSymbol && (
-        <AnalysisModal
-          symbol={selectedSymbol}
-          diagnostic={diagnostic}
-          klines={klines}
-          annotations={annotations}
-          loadingDiag={loadingDiag}
-          loadingChart={loadingChart}
-          onClose={() => setSelected(null)}
-        />
-      )}
-    </div>
-  );
+            )}
+        </div>
+    );
 }

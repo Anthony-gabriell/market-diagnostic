@@ -28,3 +28,20 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# Node / React (CRUCIAL)
+node_modules/
+build/
+dist/
+.env.local
+
+# IntelliJ / Sistema
+.idea/
+*.iml
+out/
