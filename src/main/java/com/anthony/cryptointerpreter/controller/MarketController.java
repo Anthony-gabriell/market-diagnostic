@@ -13,7 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/market")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000") // Permite a conexão com o React
+@CrossOrigin(origins = "*") // Permite a conexão com o React
 public class MarketController {
 
     private final MarketScannerService marketScannerService;
