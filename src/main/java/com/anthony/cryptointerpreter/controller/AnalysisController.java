@@ -30,7 +30,7 @@ public class AnalysisController {
         return ResponseEntity.ok(analysisService.getDiagnosticReport(symbol));
     }
 
-    @PostMapping("/scan")
+    @GetMapping("/scan")
     public ResponseEntity<List<TopOpportunityDTO>> runScan() {
         return ResponseEntity.ok(marketScannerService.runScan());
     }

@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableScheduling // active the engine for application
+@EnableScheduling // inicialização da aplicação
 public class CryptoInterpreterApplication {
 
     public static void main(String[] args) {
