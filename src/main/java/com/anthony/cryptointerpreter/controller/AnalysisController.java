@@ -5,14 +5,18 @@ import com.anthony.cryptointerpreter.analysis.MarketScannerService;
 import com.anthony.cryptointerpreter.dto.ChartAnnotationDTO;
 import com.anthony.cryptointerpreter.dto.DiagnosticReportDTO;
 import com.anthony.cryptointerpreter.dto.TopOpportunityDTO;
+import com.anthony.cryptointerpreter.model.OpportunitySnapshot;
+import com.anthony.cryptointerpreter.model.OpportunitySnapshotRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*; // O '*' garante que pegamos PathVariable, GetMapping, etc.
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
-@CrossOrigin(origins = "*")
+@Slf4j
 @RestController
 @RequestMapping("/api/analysis")
 @RequiredArgsConstructor
@@ -20,6 +24,7 @@ public class AnalysisController {
 
     private final AnalysisService analysisService;
     private final MarketScannerService marketScannerService;
+    private final OpportunitySnapshotRepository snapshotRepository;
 
     @GetMapping("/{symbol}/annotations")
     public ResponseEntity<List<ChartAnnotationDTO>> getChartAnnotations(@PathVariable String symbol) {
@@ -28,7 +33,29 @@ public class AnalysisController {
 
     @GetMapping("/{symbol}/diagnostic")
     public ResponseEntity<DiagnosticReportDTO> getDiagnosticReport(@PathVariable String symbol) {
-        return ResponseEntity.ok(analysisService.getDiagnosticReport(symbol));
+        try {
+            return ResponseEntity.ok(analysisService.getDiagnosticReport(symbol));
+        } catch (Exception ex) {
+            log.warn("Live diagnostic failed for {} ({}), falling back to cached snapshot", symbol, ex.getMessage());
+            return snapshotRepository.findFirstBySymbolOrderByScannedAtDesc(symbol)
+                    .map(AnalysisController::snapshotToDto)
+                    .map(ResponseEntity::ok)
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build());
+        }
+    }
+
+    private static DiagnosticReportDTO snapshotToDto(OpportunitySnapshot s) {
+        return new DiagnosticReportDTO(
+                null,                    // currentPrice — not stored in snapshot
+                s.getRsi(),
+                s.getVolumeProfile(),
+                s.getVolatilityLevel(),
+                s.getRiskRewardRatio(),
+                s.getOpportunityScore(),
+                List.of(),               // signals — not stored in snapshot
+                s.getSummary(),
+                null                     // actionPlan — not stored in snapshot
+        );
     }
 
     @GetMapping("/scan")
