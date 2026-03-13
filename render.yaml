@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: crypto-interpreter-backend
+    runtime: java
+    buildCommand: ./mvnw clean package -DskipTests
+    startCommand: java -jar target/*.jar
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: COINGECKO_API_KEY
+        sync: false
+      - key: BRAPI_API_TOKEN
+        sync: false

@@ -1,12 +1,13 @@
 package com.anthony.cryptointerpreter.analysis;
 
-import com.anthony.cryptointerpreter.client.BinanceClient;
+import com.anthony.cryptointerpreter.client.CoinGeckoClient;
 import com.anthony.cryptointerpreter.client.BrapiClient; // <--- Trocamos o import
 import com.anthony.cryptointerpreter.dto.DiagnosticReportDTO;
 import com.anthony.cryptointerpreter.dto.Ticker24hDTO;
 import com.anthony.cryptointerpreter.dto.TopOpportunityDTO;
 import com.anthony.cryptointerpreter.model.OpportunitySnapshot;
 import com.anthony.cryptointerpreter.model.OpportunitySnapshotRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,10 +24,20 @@ import java.util.List;
 public class MarketScannerService {
 
     private final AnalysisService analysisService;
-    private final BinanceClient binanceClient;
+    private final CoinGeckoClient coinGeckoClient;
     private final BrapiClient b3Client; // <--- Mudamos de HGBrasilClient para BrapiClient
     private final OpportunitySnapshotRepository snapshotRepository;
 
+    @PostConstruct
+    public void runOnStartup() {
+        try {
+            runScan();
+        } catch (Exception e) {
+            log.warn("Initial scan failed on startup: {}", e.getMessage());
+        }
+    }
+
+    @Scheduled(fixedDelay = 12 * 60 * 60 * 1000)
     public List<TopOpportunityDTO> runScan() {
         List<OpportunitySnapshot> snapshots = new ArrayList<>();
         snapshots.addAll(scanCrypto());
@@ -48,12 +59,12 @@ public class MarketScannerService {
 
     private List<OpportunitySnapshot> scanCrypto() {
         List<OpportunitySnapshot> snapshots = new ArrayList<>();
-        List<Ticker24hDTO> tickers = binanceClient.fetchMarketData();
+        List<Ticker24hDTO> tickers = coinGeckoClient.fetchMarketData();
 
         for (Ticker24hDTO ticker : tickers) {
             try {
-                List<BigDecimal> closes  = binanceClient.getCloseHistory(ticker.symbol());
-                List<BigDecimal> volumes = binanceClient.getVolumeHistory(ticker.symbol());
+                List<BigDecimal> closes  = coinGeckoClient.getCloseHistory(ticker.symbol());
+                List<BigDecimal> volumes = coinGeckoClient.getVolumeHistory(ticker.symbol());
                 DiagnosticReportDTO report = analysisService.getDiagnosticReport(ticker, closes, volumes);
                 snapshots.add(buildSnapshot(ticker.symbol(), report));
             } catch (Exception e) {

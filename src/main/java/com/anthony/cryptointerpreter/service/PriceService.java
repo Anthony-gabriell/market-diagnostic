@@ -1,6 +1,6 @@
 package com.anthony.cryptointerpreter.service;
 
-import com.anthony.cryptointerpreter.client.BinanceClient;
+import com.anthony.cryptointerpreter.client.CoinGeckoClient;
 import com.anthony.cryptointerpreter.dto.CryptoPriceDTO;
 import com.anthony.cryptointerpreter.model.CryptoPrice;
 import com.anthony.cryptointerpreter.model.CryptoPriceRepository;
@@ -14,11 +14,11 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class PriceService {
 
-    private final BinanceClient binanceClient;
+    private final CoinGeckoClient coinGeckoClient;
     private final CryptoPriceRepository cryptoPriceRepository;
 
     public CryptoPriceDTO getBitcoinPrice() {
-        CryptoPriceDTO dto = binanceClient.fetchPrice("BTCUSDT");
+        CryptoPriceDTO dto = coinGeckoClient.fetchPrice("BTCUSDT");
 
         CryptoPrice record = CryptoPrice.builder()
                 .symbol(dto.symbol())

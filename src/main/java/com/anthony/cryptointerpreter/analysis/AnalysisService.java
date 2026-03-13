@@ -1,6 +1,6 @@
 package com.anthony.cryptointerpreter.analysis;
 
-import com.anthony.cryptointerpreter.client.BinanceClient;
+import com.anthony.cryptointerpreter.client.CoinGeckoClient;
 import com.anthony.cryptointerpreter.dto.ChartAnnotationDTO;
 import com.anthony.cryptointerpreter.dto.DiagnosticReportDTO;
 import com.anthony.cryptointerpreter.dto.Ticker24hDTO;
@@ -18,21 +18,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AnalysisService {
 
-    private static final String KLINE_INTERVAL = "1h";
-    private static final int    KLINE_LIMIT    = 15;
-
     private static final BigDecimal PROXIMITY_THRESHOLD    = new BigDecimal("0.005");
     private static final BigDecimal HIGH_VOLUME_MULTIPLIER = new BigDecimal("1.5");
     private static final BigDecimal LOW_VOLUME_MULTIPLIER  = new BigDecimal("0.7");
     private static final BigDecimal RSI_OVERBOUGHT         = new BigDecimal("70");
 
-    private final BinanceClient binanceClient;
+    private final CoinGeckoClient coinGeckoClient;
     private final CryptoPriceRepository cryptoPriceRepository;
 
     // ── Public API ────────────────────────────────────────────────────────────
 
     public List<ChartAnnotationDTO> getChartAnnotations(String symbol) {
-        Ticker24hDTO ticker = binanceClient.fetchTicker24h(symbol);
+        Ticker24hDTO ticker = coinGeckoClient.fetchTicker24h(symbol);
         List<CryptoPrice> recentPrices = cryptoPriceRepository.findTop10BySymbolOrderByTimestampDesc(symbol);
 
         BigDecimal high24h      = new BigDecimal(ticker.highPrice());
@@ -74,43 +71,10 @@ public class AnalysisService {
     }
 
     public DiagnosticReportDTO getDiagnosticReport(String symbol) {
-        Ticker24hDTO ticker = binanceClient.fetchTicker24h(symbol);
-        List<List<Object>> klines = binanceClient.fetchKlines(symbol, KLINE_INTERVAL, KLINE_LIMIT);
-
-        BigDecimal high24h      = new BigDecimal(ticker.highPrice());
-        BigDecimal low24h       = new BigDecimal(ticker.lowPrice());
-        BigDecimal currentPrice = new BigDecimal(ticker.lastPrice());
-
-        BigDecimal rsi           = calculateRSI(extractCloses(klines));
-        String     volumeProfile = classifyVolume(extractVolumes(klines));
-        String     volatility    = calculateVolatility(klines);
-        double     rrRatio       = calculateRiskReward(currentPrice, low24h, high24h);
-        double     oppScore      = calculateOpportunityScore(rsi, volumeProfile, rrRatio);
-
-        // ── Confluence signals ────────────────────────────────────────────────
-
-        boolean atResistance    = isNearLevel(currentPrice, high24h);
-        boolean brokeResistance = currentPrice.compareTo(high24h) > 0;
-        boolean volumeHigh      = "HIGH".equals(volumeProfile);
-        boolean volumeLow       = "LOW".equals(volumeProfile);
-        boolean rsiOverbought   = rsi.compareTo(RSI_OVERBOUGHT) > 0;
-
-        List<String> signals = new ArrayList<>();
-        if (atResistance && volumeLow)    signals.add("Fakeout Warning: Low buying pressure at resistance");
-        if (brokeResistance && volumeHigh) signals.add("Breakout Confirmed: High institutional interest");
-        if (rsiOverbought && atResistance) signals.add("Exhaustion Alert: Market overbought, expect correction");
-
-        // ── Summary (descriptive state) ───────────────────────────────────────
-
-        String summary = buildSummary(oppScore, volatility, signals, rsi, volumeProfile, rrRatio);
-
-        // ── Action plan (direct instruction based on 3 metrics) ───────────────
-
-        String actionPlan = buildActionPlan(
-                oppScore, volatility, rrRatio, rsi, volumeProfile, low24h, high24h);
-
-        return new DiagnosticReportDTO(currentPrice, rsi, volumeProfile, volatility,
-                rrRatio, oppScore, signals, summary, actionPlan);
+        Ticker24hDTO        ticker  = coinGeckoClient.fetchTicker24h(symbol);
+        List<BigDecimal>    closes  = coinGeckoClient.getCloseHistory(symbol);
+        List<BigDecimal>    volumes = coinGeckoClient.getVolumeHistory(symbol);
+        return getDiagnosticReport(ticker, closes, volumes);
     }
 
     /**
@@ -191,32 +155,6 @@ public class AnalysisService {
         if (currentVol.compareTo(avgVol.multiply(HIGH_VOLUME_MULTIPLIER)) > 0) return "HIGH";
         if (currentVol.compareTo(avgVol.multiply(LOW_VOLUME_MULTIPLIER))  < 0) return "LOW";
         return "AVERAGE";
-    }
-
-    /**
-     * Volatility = total price range across all 15 klines.
-     * (maxHigh − minLow) / minLow × 100 > 2% → HIGH | < 0.5% → LOW | else NORMAL.
-     */
-    private String calculateVolatility(List<List<Object>> klines) {
-        if (klines.isEmpty()) return "NORMAL";
-
-        BigDecimal maxHigh = klines.stream()
-                .map(k -> new BigDecimal(k.get(2).toString()))
-                .max(BigDecimal::compareTo).orElseThrow();
-
-        BigDecimal minLow = klines.stream()
-                .map(k -> new BigDecimal(k.get(3).toString()))
-                .min(BigDecimal::compareTo).orElseThrow();
-
-        if (minLow.compareTo(BigDecimal.ZERO) == 0) return "NORMAL";
-
-        BigDecimal rangePercent = maxHigh.subtract(minLow)
-                .divide(minLow, 6, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100));
-
-        if (rangePercent.compareTo(new BigDecimal("2.0")) > 0) return "HIGH";
-        if (rangePercent.compareTo(new BigDecimal("0.5")) < 0) return "LOW";
-        return "NORMAL";
     }
 
     /**
@@ -344,14 +282,6 @@ public class AnalysisService {
         BigDecimal diff      = price.subtract(level).abs();
         BigDecimal threshold = level.multiply(PROXIMITY_THRESHOLD);
         return diff.compareTo(threshold) <= 0;
-    }
-
-    private List<BigDecimal> extractCloses(List<List<Object>> klines) {
-        return klines.stream().map(k -> new BigDecimal(k.get(4).toString())).toList();
-    }
-
-    private List<BigDecimal> extractVolumes(List<List<Object>> klines) {
-        return klines.stream().map(k -> new BigDecimal(k.get(5).toString())).toList();
     }
 
     private String formatPrice(BigDecimal price) {
