@@ -90,7 +90,9 @@ public class CoinGeckoClient implements MarketDataClient {
     public List<Ticker24hDTO> fetchMarketData() {
         chartCache.clear();
 
-        String ids = SYMBOL_TO_ID.values().stream().collect(Collectors.joining(","));
+        String ids = SYMBOLS.stream()
+                .map(SYMBOL_TO_ID::get)
+                .collect(Collectors.joining(","));
         log.info("Fetching market data for {} coins from CoinGecko", SYMBOL_TO_ID.size());
 
         List<Map<String, Object>> coins = restClient.get()
