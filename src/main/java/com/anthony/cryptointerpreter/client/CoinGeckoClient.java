@@ -198,11 +198,15 @@ public class CoinGeckoClient implements MarketDataClient {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Ticker24hDTO mapToTicker(String symbol, Map<String, Object> coin) {
-        String high   = coin.getOrDefault("high_24h",      "0").toString();
-        String low    = coin.getOrDefault("low_24h",       "0").toString();
-        String price  = coin.getOrDefault("current_price", "0").toString();
-        String volume = coin.getOrDefault("total_volume",  "0").toString();
+        String high   = safeString(coin.get("high_24h"));
+        String low    = safeString(coin.get("low_24h"));
+        String price  = safeString(coin.get("current_price"));
+        String volume = safeString(coin.get("total_volume"));
         return new Ticker24hDTO(symbol, high, low, price, volume);
+    }
+
+    private String safeString(Object value) {
+        return value != null ? value.toString() : "0";
     }
 
     private String idToSymbol(String id) {
