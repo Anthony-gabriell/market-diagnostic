@@ -25,10 +25,10 @@ Quanto maior a nota, maior a oportunidade identificada pelo sistema.
 
 🛠️ Tecnologias utilizadas
 
-Java 21 + Spring Boot 3
-PostgreSQL (Aiven)
-React.js + Tailwind CSS
-APIs: CoinGecko e Brapi
+Java 21 + Spring Boot 3,
+PostgreSQL (Aiven),
+React.js + Tailwind CSS,
+APIs: CoinGecko e Brapi,
 Deploy: Render
 
 
